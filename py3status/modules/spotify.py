@@ -65,6 +65,21 @@ class Py3status:
     sanitize_titles = True
     sanitize_words = 'stereo|mono|remaster|edit|bonus|extended|demo|explicit|version|feat'
 
+    def post_config_hook(self):
+        # Match brackets with their content containing any metadata word
+        # examples:
+        # (Remastered 2017)
+        # [Single]
+        # (Bonus Track)
+        self.inside_brackets = self._compile_re(r"([\(\[][^)\]]*?(META_WORDS_HERE)[^)\]]*?[\)\]])")
+
+        # Match string after hyphen, comma, semicolon or slash containing any metadata word
+        # examples:
+        # - Remastered 2012
+        # / Radio Edit
+        # ; Remastered
+        self.after_delimiter = self._compile_re(r"([\-,;/])([^\-,;/])*(META_WORDS_HERE).*")
+
     def _get_text(self):
         """
         Get the current song metadatas (artist - title)
@@ -124,11 +139,8 @@ class Py3status:
         """
         Remove redunant meta data from title and return it
         """
-        inside_brackets = self._compile_re(r"([\(\[][^)\]]*?(META_WORDS_HERE)[^)\]]*?[\)\]])")
-        after_delimiter = self._compile_re(r"([\-,;/])([^\-,;/])*(META_WORDS_HERE).*")
-
-        title = re.sub(inside_brackets, "", title)
-        title = re.sub(after_delimiter, "", title)
+        title = re.sub(self.inside_brackets, "", title)
+        title = re.sub(self.after_delimiter, "", title)
         return title.strip()
 
     def spotify(self):
