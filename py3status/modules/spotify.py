@@ -11,8 +11,10 @@ Configuration parameters:
         (default 'Spotify stopped')
     sanitize_titles: whether to remove meta data from album/track title
         (default True)
-    sanitize_words: which meta data to remove separated by |
-        (default 'stereo|mono|remaster|edit|bonus|extended|demo|explicit|version|feat')
+    sanitize_words: which meta data to remove
+        (default ['stereo', 'mono', 'remaster', 'edit',
+                  'bonus', 'extended', 'demo', 'explicit',
+                  'version', 'feat'])
 
 Format placeholders:
     {album} album name
@@ -63,7 +65,18 @@ class Py3status:
     format_down = 'Spotify not running'
     format_stopped = 'Spotify stopped'
     sanitize_titles = True
-    sanitize_words = 'stereo|mono|remaster|edit|bonus|extended|demo|explicit|version|feat'
+    sanitize_words = [
+        'stereo',
+        'mono',
+        'remaster',
+        'edit',
+        'bonus',
+        'extended',
+        'demo',
+        'explicit',
+        'version',
+        'feat'
+    ]
 
     def post_config_hook(self):
         # Match brackets with their content containing any metadata word
@@ -132,7 +145,8 @@ class Py3status:
         """
         Compile given regular expression for current sanitize words
         """
-        expression = expression.replace('META_WORDS_HERE', self.sanitize_words)
+        meta_words = '|'.join(self.sanitize_words)
+        expression = expression.replace('META_WORDS_HERE', meta_words)
         return re.compile(expression, re.IGNORECASE)
 
     def _sanitize_title(self, title):
