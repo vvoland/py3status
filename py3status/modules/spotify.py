@@ -9,6 +9,10 @@ Configuration parameters:
         (default 'Spotify not running')
     format_stopped: define output if spotify is not playing
         (default 'Spotify stopped')
+    sanitize_titles: whether to remove meta data from album/track title
+        (default True)
+    sanitize_words: which meta data to remove separated by |
+        (default 'stereo|mono|remaster|edit|bonus|extended|demo|explicit|version|feat')
 
 Format placeholders:
     {album} album name
@@ -47,6 +51,7 @@ stopped
 
 from datetime import timedelta
 import dbus
+import re
 
 
 class Py3status:
@@ -57,6 +62,8 @@ class Py3status:
     format = '{artist} : {title}'
     format_down = 'Spotify not running'
     format_stopped = 'Spotify stopped'
+    sanitize_titles = True
+    sanitize_words = 'stereo|mono|remaster|edit|bonus|extended|demo|explicit|version|feat'
 
     def _get_text(self):
         """
@@ -77,6 +84,10 @@ class Py3status:
                 microtime = metadata.get('mpris:length')
                 rtime = str(timedelta(microseconds=microtime))[:-7]
                 title = metadata.get('xesam:title')
+                if self.sanitize_titles:
+                    title = self._sanitize_title(title)
+                    album = self._sanitize_title(album)
+
                 playback_status = self.player.Get(
                     'org.mpris.MediaPlayer2.Player', 'PlaybackStatus'
                 )
@@ -101,6 +112,24 @@ class Py3status:
             return (
                 self.format_down,
                 self.py3.COLOR_OFFLINE or self.py3.COLOR_BAD)
+
+    def _compile_re(self, expression):
+        """
+        Compile given regular expression for current sanitize words
+        """
+        expression = expression.replace('META_WORDS_HERE', self.sanitize_words)
+        return re.compile(expression, re.IGNORECASE)
+
+    def _sanitize_title(self, title):
+        """
+        Remove redunant meta data from title and return it
+        """
+        inside_brackets = self._compile_re(r"([\(\[][^)\]]*?(META_WORDS_HERE)[^)\]]*?[\)\]])")
+        after_delimiter = self._compile_re(r"([\-,;/])([^\-,;/])*(META_WORDS_HERE).*")
+
+        title = re.sub(inside_brackets, "", title)
+        title = re.sub(after_delimiter, "", title)
+        return title.strip()
 
     def spotify(self):
         """
