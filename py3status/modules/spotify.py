@@ -12,9 +12,9 @@ Configuration parameters:
     sanitize_titles: whether to remove meta data from album/track title
         (default True)
     sanitize_words: which meta data to remove
-        (default ['stereo', 'mono', 'remaster', 'edit',
-                  'bonus', 'extended', 'demo', 'explicit',
-                  'version', 'feat'])
+        (default ['bonus', 'demo', 'edit', 'explicit',
+                  'extended', 'feat', 'mono', 'remaster',
+                  'stereo', 'version'])
 
 Format placeholders:
     {album} album name
@@ -66,19 +66,26 @@ class Py3status:
     format_stopped = 'Spotify stopped'
     sanitize_titles = True
     sanitize_words = [
-        'stereo',
+        'bonus',
+        'demo',
+        'edit',
+        'explicit',
+        'extended',
+        'feat',
         'mono',
         'remaster',
-        'edit',
-        'bonus',
-        'extended',
-        'demo',
-        'explicit',
-        'version',
-        'feat'
+        'stereo',
+        'version'
     ]
 
     def post_config_hook(self):
+        # Match string after hyphen, comma, semicolon or slash containing any metadata word
+        # examples:
+        # - Remastered 2012
+        # / Radio Edit
+        # ; Remastered
+        self.after_delimiter = self._compile_re(r"([\-,;/])([^\-,;/])*(META_WORDS_HERE).*")
+
         # Match brackets with their content containing any metadata word
         # examples:
         # (Remastered 2017)
@@ -86,12 +93,13 @@ class Py3status:
         # (Bonus Track)
         self.inside_brackets = self._compile_re(r"([\(\[][^)\]]*?(META_WORDS_HERE)[^)\]]*?[\)\]])")
 
-        # Match string after hyphen, comma, semicolon or slash containing any metadata word
-        # examples:
-        # - Remastered 2012
-        # / Radio Edit
-        # ; Remastered
-        self.after_delimiter = self._compile_re(r"([\-,;/])([^\-,;/])*(META_WORDS_HERE).*")
+    def _compile_re(self, expression):
+        """
+        Compile given regular expression for current sanitize words
+        """
+        meta_words = '|'.join(self.sanitize_words)
+        expression = expression.replace('META_WORDS_HERE', meta_words)
+        return re.compile(expression, re.IGNORECASE)
 
     def _get_text(self):
         """
@@ -140,14 +148,6 @@ class Py3status:
             return (
                 self.format_down,
                 self.py3.COLOR_OFFLINE or self.py3.COLOR_BAD)
-
-    def _compile_re(self, expression):
-        """
-        Compile given regular expression for current sanitize words
-        """
-        meta_words = '|'.join(self.sanitize_words)
-        expression = expression.replace('META_WORDS_HERE', meta_words)
-        return re.compile(expression, re.IGNORECASE)
 
     def _sanitize_title(self, title):
         """
